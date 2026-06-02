@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Visa Cuotas</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue: #185FA5;
+      --text-primary: #1a1a1a;
+      --text-secondary: #6b6b6b;
+      --text-tertiary: #9b9b9b;
+      --bg-primary: #ffffff;
+      --bg-secondary: #f5f5f3;
+      --bg-page: #f0ede8;
+      --border: rgba(0,0,0,0.12);
+      --border-hover: rgba(0,0,0,0.28);
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --font: 'Segoe UI', system-ui, sans-serif;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg-page);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .app { max-width: 720px; margin: 0 auto; }
+
+    .header { margin-bottom: 2rem; }
+    .header h1 {
+      font-size: 24px; font-weight: 600; color: var(--text-primary);
+      letter-spacing: -0.3px; display: flex; align-items: center; gap: 10px;
+    }
+    .header h1 svg { color: var(--blue); }
+    .header p { font-size: 14px; color: var(--text-secondary); margin-top: 5px; }
+
+    .input-section {
+      background: var(--bg-primary); border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg); padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;
+    }
+    .input-group { display: flex; flex-direction: column; gap: 6px; }
+    .input-group label {
+      font-size: 11px; color: var(--text-secondary); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .input-group input[type="number"] {
+      padding: 8px 12px; border: 0.5px solid var(--border); border-radius: var(--radius-md);
+      font-size: 15px; font-family: var(--font); color: var(--text-primary);
+      background: var(--bg-primary); outline: none; transition: border-color 0.15s; width: 200px;
+    }
+    .input-group input[type="number"]:focus {
+      border-color: var(--blue); box-shadow: 0 0 0 3px rgba(24,95,165,0.12);
+    }
+
+    .section-label {
+      font-size: 11px; color: var(--text-secondary); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;
+    }
+
+    .cuotas-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px; margin-bottom: 1.5rem;
+    }
+    .cuota-card {
+      background: var(--bg-primary); border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg); padding: 1rem 1.25rem; cursor: pointer;
+      transition: border-color 0.15s, transform 0.1s; user-select: none;
+    }
+    .cuota-card:hover { border-color: var(--border-hover); }
+    .cuota-card:active { transform: scale(0.98); }
+    .cuota-card.selected { border: 2px solid var(--blue); }
+    .cuota-card.selected .card-meses { color: var(--blue); }
+    .card-meses {
+      font-size: 12px; font-weight: 600; color: var(--text-secondary);
+      margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    .card-cuota { font-size: 22px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; line-height: 1.1; }
+    .card-cuota span { font-size: 13px; font-weight: 400; color: var(--text-secondary); }
+    .card-details { font-size: 12px; color: var(--text-tertiary); display: flex; flex-direction: column; gap: 2px; }
+
+    .empty-state {
+      grid-column: 1 / -1; text-align: center; padding: 2.5rem 0;
+      color: var(--text-secondary); font-size: 14px; background: var(--bg-primary);
+      border: 0.5px dashed var(--border); border-radius: var(--radius-lg);
+    }
+
+    .selected-panel {
+      background: var(--bg-primary); border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg); padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem; display: none;
+    }
+    .selected-panel.visible { display: block; }
+    .panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1rem; flex-wrap: wrap; gap: 8px;
+    }
+    .panel-header h2 { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+    .panel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+    .metric { background: var(--bg-secondary); border-radius: var(--radius-md); padding: 0.75rem 1rem; }
+    .metric-label {
+      font-size: 11px; color: var(--text-secondary); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px;
+    }
+    .metric-value { font-size: 18px; font-weight: 600; color: var(--text-primary); }
+
+    .btn-pdf {
+      display: inline-flex; align-items: center; gap: 6px; font-size: 13px;
+      font-family: var(--font); padding: 7px 14px; cursor: pointer;
+      background: var(--bg-primary); border: 0.5px solid var(--border-hover);
+      border-radius: var(--radius-md); color: var(--text-primary); transition: background 0.15s;
+    }
+    .btn-pdf:hover { background: var(--bg-secondary); }
+    .btn-pdf:active { transform: scale(0.98); }
+    .btn-pdf svg { color: var(--blue); }
+  </style>
+</head>
+<body>
+  <div class="app">
+
+    <div class="header">
+      <h1>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+          <line x1="1" y1="10" x2="23" y2="10"></line>
+        </svg>
+        Visa Cuotas
+      </h1>
+      <p>Ingrese el valor del producto y seleccione las cuotas</p>
+    </div>
+
+    <div class="input-section">
+      <div class="input-group">
+        <label for="valor">Valor del producto (Q)</label>
+        <input type="number" id="valor" placeholder="Ej: 10000" min="0" step="0.01" value="10000" />
+      </div>
+    </div>
+
+    <div class="section-label">Opciones de pago</div>
+    <div class="cuotas-grid" id="cuotas-grid">
+      <div class="empty-state">Ingrese un valor para ver las opciones</div>
+    </div>
+
+    <div class="selected-panel" id="selected-panel">
+      <div class="panel-header">
+        <h2 id="panel-title">Resumen de cuota seleccionada</h2>
+        <button class="btn-pdf" onclick="exportPDF()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Exportar PDF
+        </button>
+      </div>
+      <div class="panel-grid">
+        <div class="metric"><div class="metric-label">Valor base</div><div class="metric-value" id="res-base">—</div></div>
+        <div class="metric"><div class="metric-label">Recargo</div><div class="metric-value" id="res-recargo">—</div></div>
+        <div class="metric"><div class="metric-label">Total a pagar</div><div class="metric-value" id="res-total">—</div></div>
+        <div class="metric"><div class="metric-label">Cuota mensual</div><div class="metric-value" id="res-cuota">—</div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // ─── Configuración ────────────────────────────────────────────────────────
+    // Cuando el backend esté listo, reemplazar null por la URL real, ej:
+    // const API_URL = 'http://localhost:8080/api/cuotas';
+    const API_URL = null;
+
+    // Valores locales: se usan mientras la API no esté disponible (fallback)
+    const CUOTAS_FALLBACK = [
+      { meses: 12, porcentaje: 0.15 },
+      { meses: 15, porcentaje: 0.15 },
+      { meses: 18, porcentaje: 0.18 },
+      { meses: 24, porcentaje: 0.25 },
+      { meses: 36, porcentaje: 0.30 },
+      { meses: 48, porcentaje: 0.30 },
+    ];
+
+    // ─── Estado global ────────────────────────────────────────────────────────
+    let tablaCuotas   = [];
+    let selectedMeses = null;
+    let lastCalc      = null;
+
+    // ─── Carga inicial ────────────────────────────────────────────────────────
+    // Intenta traer la tabla desde la API; si falla, usa el fallback local.
+    async function cargarTablaCuotas() {
+      if (!API_URL) {
+        tablaCuotas = CUOTAS_FALLBACK;
+        renderCards();
+        return;
+      }
+      try {
+        const response = await fetch(API_URL);
+        if (!response.ok) throw new Error('Error ' + response.status);
+        // El backend devuelve: [{ "meses": 12, "porcentaje": 0.15 }, ...]
+        tablaCuotas = await response.json();
+      } catch (err) {
+        console.warn('API no disponible, usando valores locales.', err);
+        tablaCuotas = CUOTAS_FALLBACK;
+      }
+      renderCards();
+    }
+
+    // ─── Utilidades ───────────────────────────────────────────────────────────
+    function fmt(n) {
+      return 'Q ' + n.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // ─── Cálculos (siempre en el frontend) ───────────────────────────────────
+    function calcular(valor) {
+      return tablaCuotas.map(c => {
+        const recargo = parseFloat((valor * c.porcentaje).toFixed(2));
+        const total   = parseFloat((valor + recargo).toFixed(2));
+        const cuota   = parseFloat((total / c.meses).toFixed(2));
+        return { meses: c.meses, pct: c.porcentaje, recargo, total, cuota };
+      });
+    }
+
+    // ─── Render de tarjetas ───────────────────────────────────────────────────
+    function renderCards() {
+      const valor = parseFloat(document.getElementById('valor').value) || 0;
+      const grid  = document.getElementById('cuotas-grid');
+
+      if (!valor || valor <= 0) {
+        grid.innerHTML = '<div class="empty-state">Ingrese un valor para ver las opciones</div>';
+        document.getElementById('selected-panel').classList.remove('visible');
+        return;
+      }
+
+      const resultados = calcular(valor);
+      lastCalc = { valor, resultados };
+
+      grid.innerHTML = resultados.map(r => `
+        <div class="cuota-card ${selectedMeses === r.meses ? 'selected' : ''}" onclick="selectCuota(${r.meses})">
+          <div class="card-meses">${r.meses} meses</div>
+          <div class="card-cuota">${fmt(r.cuota)}<span>/mes</span></div>
+          <div class="card-details">
+            <span>Recargo: ${fmt(r.recargo)} (${Math.round(r.pct * 100)}%)</span>
+            <span>Total: ${fmt(r.total)}</span>
+          </div>
+        </div>
+      `).join('');
+
+      if (selectedMeses) {
+        const r = resultados.find(x => x.meses === selectedMeses);
+        if (r) updatePanel(r, valor);
+      }
+    }
+
+    function selectCuota(meses) {
+      selectedMeses = meses;
+      renderCards();
+      const r = lastCalc && lastCalc.resultados.find(x => x.meses === meses);
+      if (r) updatePanel(r, lastCalc.valor);
+    }
+
+    function updatePanel(r, valor) {
+      document.getElementById('selected-panel').classList.add('visible');
+      document.getElementById('panel-title').textContent = `Resumen — ${r.meses} meses`;
+      document.getElementById('res-base').textContent    = fmt(valor);
+      document.getElementById('res-recargo').textContent = `${fmt(r.recargo)} (${Math.round(r.pct * 100)}%)`;
+      document.getElementById('res-total').textContent   = fmt(r.total);
+      document.getElementById('res-cuota').textContent   = fmt(r.cuota);
+    }
+
+    // ─── Exportar PDF ─────────────────────────────────────────────────────────
+    function exportPDF() {
+      if (!selectedMeses || !lastCalc) return;
+      const r = lastCalc.resultados.find(x => x.meses === selectedMeses);
+      if (!r) return;
+
+      const { jsPDF } = window.jspdf;
+      const doc       = new jsPDF({ unit: 'mm', format: 'a4' });
+      const blue      = [24, 95, 165];
+      const dark      = [30, 30, 30];
+      const gray      = [110, 110, 110];
+      const lightgray = [242, 242, 242];
+
+      doc.setFillColor(...blue);
+      doc.rect(0, 0, 210, 30, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(18); doc.setFont('helvetica', 'bold');
+      doc.text('Visa Cuotas', 15, 17);
+      doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+      doc.text('Resumen de financiamiento', 15, 24);
+      const fecha = new Date().toLocaleDateString('es-GT', { year: 'numeric', month: 'long', day: 'numeric' });
+      doc.setTextColor(200, 220, 240); doc.setFontSize(9);
+      doc.text(fecha, 195, 24, { align: 'right' });
+
+      const items = [
+        ['Valor del producto', `Q ${lastCalc.valor.toLocaleString('es-GT', { minimumFractionDigits: 2 })}`],
+        ['Recargo aplicado',   `Q ${r.recargo.toLocaleString('es-GT', { minimumFractionDigits: 2 })} (${Math.round(r.pct * 100)}%)`],
+        ['Total a pagar',      `Q ${r.total.toLocaleString('es-GT', { minimumFractionDigits: 2 })}`],
+        ['Cantidad de cuotas', `${r.meses} meses`],
+        ['Cuota mensual',      `Q ${r.cuota.toLocaleString('es-GT', { minimumFractionDigits: 2 })}`],
+      ];
+
+      let y = 48;
+      items.forEach((item, i) => {
+        if (i % 2 === 0) { doc.setFillColor(...lightgray); doc.rect(15, y - 5.5, 180, 11, 'F'); }
+        doc.setTextColor(...gray); doc.setFontSize(10); doc.setFont('helvetica', 'normal');
+        doc.text(item[0], 20, y);
+        doc.setTextColor(...dark); doc.setFont('helvetica', 'bold');
+        doc.text(item[1], 190, y, { align: 'right' });
+        y += 14;
+      });
+
+      y += 4;
+      doc.setFillColor(...blue); doc.rect(15, y, 180, 14, 'F');
+      doc.setTextColor(255, 255, 255); doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+      doc.text('Cuota mensual a pagar', 20, y + 9);
+      doc.text(`Q ${r.cuota.toLocaleString('es-GT', { minimumFractionDigits: 2 })}`, 190, y + 9, { align: 'right' });
+
+      doc.setTextColor(...gray); doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+      doc.text('Este documento es un resumen informativo generado automáticamente.', 105, 285, { align: 'center' });
+
+      doc.save(`visacuotas_${r.meses}meses.pdf`);
+    }
+
+    // ─── Arranque ─────────────────────────────────────────────────────────────
+    document.getElementById('valor').addEventListener('input', renderCards);
+    cargarTablaCuotas();
+  </script>
+</body>
+</html>
